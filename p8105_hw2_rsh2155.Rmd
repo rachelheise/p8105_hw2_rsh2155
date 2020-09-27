@@ -7,6 +7,7 @@ output: github_document
 ```{r setup, include=FALSE}
 library(readxl)
 library(tidyverse)
+library(dplyr)
 ```
 
 ## Problem 1
@@ -49,7 +50,7 @@ precip_2018_df =
   ) %>% 
   janitor::clean_names() %>% 
   drop_na(month) %>% 
-  mutate(year = 2017) %>% 
+  mutate(year = 2018) %>% 
   relocate(year)
 
 ```
@@ -80,10 +81,13 @@ There are `r nrow(trashwheel_df)` rows in our final data set.
 Key variables are:
 There is also data on monthly precipitation in additional sheets in Excel.
 
-Total precipitation in 2018: `r `
-Median number of sports balls in a dumpster in 2017: `r `
+```{r}
+summarize(filter(trashwheel_df, year == 2017), Median = median(sports_balls))
+```
 
 
+Total precipitation in 2018: `r summarize(filter(precip_df, year == 2018), Sum = sum(total))`
+Median number of sports balls in a dumpster in 2017: `r summarize(filter(trashwheel_df, year == 2017), Median = median(sports_balls))`
 
 
 
@@ -92,7 +96,65 @@ Median number of sports balls in a dumpster in 2017: `r `
 ```{r}
 nyc_subway = read_csv("./data/NYC_Transit_Subway_Entrance_And_Exit_Data.csv") %>%
   select(Line:Entry, Vending, ADA) %>% 
-  mutate(Entry = recode(Entry, "YES" = TRUE, "NO" = FALSE))
+  mutate(Entry = recode(Entry, "YES" = TRUE, "NO" = FALSE)) %>% 
+  janitor::clean_names()
+
 ```
 
+This data set contains data on aspects of the New York City Subway system. It includes information on subway stations and which lines and routes they serve. This data set also contains information on aspects of each subway station including their latitude/longitude, whether or not they are ADA compliant, their entrance type, and whether vending is available at the station.
+
+To clean this data, I first selected the specific columns of interest. Then I used the mutate function to recode the entry variable from YES/NO to a logical vector. Finally, I used the janitor package to clean the names of the functions.
+
+This data has `r ncol(nyc_subway)` columns and `r nrow(nyc_subway)` observations.
+
+These data are not quite tidy yet because of the route data. Currently, this data is organized with route information in some of 11 columns but comparable information about each route is not necessarily found in the same column.
+
+```{r}
+distinct_subway = distinct(nyc_subway, station_name, route1, .keep_all = TRUE)
+
+
+
+```
+
+
+There are `r nrow(distinct_subway)` distinct stations in this data set, of which `r count(filter(distinct_subway, ada == TRUE))` are ADA compliant. 
+
+Reformat data with route number and route name as distinct variables.
+```{r}
+nyc_subway = nyc_subway %>%
+  mutate(across(route1:route11, as.character)) %>% 
+  pivot_longer(
+    route1:route11,
+    names_to = "route_number",
+    names_prefix = "route",
+    values_to = "route_name"
+    ) %>% 
+  drop_na(route_name)
+
+```
+
+`r ` distinct stations serve the A train.
+
+
+## Problem 3
+
+Read in pols-month csv data.
+
+```{r}
+month_df = 
+  tibble(
+    month = 1:12,
+    month_name = month.name
+  )
+
+pols_month = read_csv("./data/pols-month.csv") %>% 
+  separate(mon, into = c("year", "month", "day"), sep = "[-]", convert = TRUE) %>% 
+  left_join(month_df, by = "month") %>% 
+  select(-month, -day, month = "month_name") %>% 
+  pivot_longer(
+    cols = starts_with("prez"),
+    names_to = "president") %>% 
+  mutate(president = substr(president, 6, 8)) %>% 
+  relocate(year, month)
+```
 
