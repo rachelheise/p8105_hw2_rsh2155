@@ -131,9 +131,26 @@ nyc_subway = nyc_subway %>%
     ) %>% 
   drop_na(route_name)
 
+
+distinct_A = nrow(
+  distinct(
+    filter(
+      nyc_subway, route_name == "A"), station_name, line, .keep_all = TRUE
+    )
+  )
+
+
+A_ADA = nrow(
+  distinct(
+    filter(
+      nyc_subway, route_name == "A", ada == TRUE),
+    station_name, line, .keep_all = TRUE
+    )
+  )
+
 ```
 
-`r ` distinct stations serve the A train.
+`r distinct_A` distinct stations serve the A train, and `r A_ADA` of those stations are ADA compliant.
 
 
 ## Problem 3
