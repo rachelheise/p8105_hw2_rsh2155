@@ -165,6 +165,7 @@ month_df =
   )
 
 pols_month = read_csv("./data/pols-month.csv") %>% 
+    janitor::clean_names() %>% 
   separate(mon, into = c("year", "month", "day"), sep = "[-]", convert = TRUE) %>% 
   left_join(month_df, by = "month") %>% 
   select(-month, -day, month = "month_name") %>% 
@@ -174,4 +175,52 @@ pols_month = read_csv("./data/pols-month.csv") %>%
   mutate(president = substr(president, 6, 8)) %>% 
   relocate(year, month)
 ```
+
+Read in and clean snp data.
+
+```{r}
+snp_df = read_csv("./data/snp.csv") %>% 
+    janitor::clean_names() %>% 
+  separate(date, into = c("month", "day", "year"), sep = "[/]", convert = TRUE) %>% 
+  left_join(month_df, by = "month") %>% 
+  select(-month, -day, month = "month_name") %>% 
+  relocate(year, month)
+```
+
+Read in and clean unemployment data.
+
+```{r}
+month_longer = 
+  tibble(
+    month = c("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"),
+    month_name = month.name
+  )
+
+
+unemployment_df = read_csv("./data/unemployment.csv") %>% 
+  janitor::clean_names() %>% 
+  pivot_longer(
+    jan:dec,
+    names_to = "month",
+    values_to = "unemployment"
+  ) %>% 
+  left_join(month_longer, by = "month") %>% 
+  select(-month, month = "month_name") %>% 
+  relocate(year, month)
+
+```
+
+Combine the data sets.
+
+```{r}
+pols_month = 
+  left_join(pols_month, snp_df, by = c("year", "month"))
+
+pols_month = 
+  left_join(pols_month, unemployment_df, by = c("year", "month"))
+
+```
+
+The pols-month data set contains information about the date each piece of data was collected, whether or not the president was republican or democratic, the number of republican and democratic governors, senators, and representatives. The snp data set reports the S&P stock market index on each date that is recorded; this provides a high level measure of how the stock market is performing. The final data set used here was the unemployment data, which contained the percentage of unemployment for each month and year. After combining these data sets, the final data set contains `r nrow(pols_month)` observations and `r ncol(pols_month)` columns. The range of years contained in this data set is `r min(pull(pols_month, year))` through `r max(pull(pols_month, year))`. Key variables found in this data are close (the value of the stock market at close of business), unemployment, and president (democrat or republican).
+
 
