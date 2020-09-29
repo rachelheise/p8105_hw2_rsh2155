@@ -13,9 +13,10 @@ library(dplyr)
 ## Problem 1
 
 Read in the Excel sheet for Mr. Trash Wheel data.
-```{r}
+
+```{r trashwheeldf}
 trashwheel_df = 
-  read_xlsx(
+  read_excel(
     "./data/Trash-Wheel-Collection-Totals-8-6-19.xlsx",
     sheet = "Mr. Trash Wheel",
     range = cell_cols("A:N")) %>% 
@@ -29,7 +30,7 @@ trashwheel_df =
 
 Read precipitation data for 2017 and 2018.
 
-``` {r}
+``` {r precipitation}
 precip_2017_df =
   read_excel(
     "./data/Trash-Wheel-Collection-Totals-8-6-19.xlsx",
@@ -57,7 +58,7 @@ precip_2018_df =
 
 Combine the two precipitation data sets.
 
-```{r}
+```{r combine_precip}
 month_df = 
   tibble(
     month = 1:12,
@@ -67,38 +68,28 @@ month_df =
 
 precip_df =
   bind_rows(precip_2017_df, precip_2018_df) %>% 
-  left_join(month_df, by = "month")
+  left_join(month_df, by = "month") %>% 
+  select(-month, month = "month_name") %>% 
+  relocate(year, month)
   
 ```
 
-Data from Mr. Trash Wheel in Baltimore, MD.
+This data comes from Mr. Trash Wheel in Baltimore, MD. The trash wheel sits in the Inner Harbor in Baltimore and collects trash which both cleans up the harbor and powers homes in the area. This data set is broken down by dumpster and includes information on the specific type of trash collected (glass bottles, grocery bags, sports balls, etc.), the volume and weight of the trash, and how many homes were powered by the garbage in each dumpster that was collected. the precipitation data set has data on the total precipitation in Baltimore each month. There are `r nrow(trashwheel_df)` observations in the final trash wheel data set, and `r nrow(precip_df)` observations in the final precipitation data set. 
 
-What Mr. Trash Wheel does/how it operates
-What data is included
+Key variables are dumpster, homes_powered, weight_tons, and total precipitation.
 
-There are `r nrow(trashwheel_df)` rows in our final data set. 
-
-Key variables are:
-There is also data on monthly precipitation in additional sheets in Excel.
-
-```{r}
-summarize(filter(trashwheel_df, year == 2017), Median = median(sports_balls))
-```
-
-
-Total precipitation in 2018: `r summarize(filter(precip_df, year == 2018), Sum = sum(total))`
-Median number of sports balls in a dumpster in 2017: `r summarize(filter(trashwheel_df, year == 2017), Median = median(sports_balls))`
-
+The total precipitation in 2018 was 
+`r sum(pull(filter(precip_df, year == 2018), total))` and the median number of sports balls in a dumpster in 2017 were `r median(pull(filter(trashwheel_df, year == 2017), sports_balls))`.
 
 
 ## Problem 2
 
-```{r}
-nyc_subway = read_csv("./data/NYC_Transit_Subway_Entrance_And_Exit_Data.csv") %>%
+```{r subway, results="hide"}
+nyc_subway =
+  read_csv("./data/NYC_Transit_Subway_Entrance_And_Exit_Data.csv") %>%
   select(Line:Entry, Vending, ADA) %>% 
   mutate(Entry = recode(Entry, "YES" = TRUE, "NO" = FALSE)) %>% 
   janitor::clean_names()
-
 ```
 
 This data set contains data on aspects of the New York City Subway system. It includes information on subway stations and which lines and routes they serve. This data set also contains information on aspects of each subway station including their latitude/longitude, whether or not they are ADA compliant, their entrance type, and whether vending is available at the station.
@@ -109,18 +100,31 @@ This data has `r ncol(nyc_subway)` columns and `r nrow(nyc_subway)` observations
 
 These data are not quite tidy yet because of the route data. Currently, this data is organized with route information in some of 11 columns but comparable information about each route is not necessarily found in the same column.
 
-```{r}
-distinct_subway = distinct(nyc_subway, station_name, route1, .keep_all = TRUE)
+```{r distinctsubway}
+distinct_subway = nyc_subway %>% 
+  distinct(station_name, line, .keep_all = TRUE)
 
+num_distinct = nrow(distinct_subway)
+
+num_ada = 
+  nrow(
+    filter(distinct_subway, ada == TRUE)
+  )
+
+no_vending = nrow(filter(nyc_subway, vending == "NO"))
+
+no_vending_entrance = nrow(filter(nyc_subway, vending == "NO", entry == TRUE))
 
 
 ```
 
+There are `r num_distinct` distinct stations in this data set, of which `r num_ada` are ADA compliant. 
 
-There are `r nrow(distinct_subway)` distinct stations in this data set, of which `r count(filter(distinct_subway, ada == TRUE))` are ADA compliant. 
+The proportion of station entrances and exits without vending that allow entrance is `r no_vending_entrance/no_vending`.
 
 Reformat data with route number and route name as distinct variables.
-```{r}
+
+```{r subway_analysis}
 nyc_subway = nyc_subway %>%
   mutate(across(route1:route11, as.character)) %>% 
   pivot_longer(
@@ -132,40 +136,32 @@ nyc_subway = nyc_subway %>%
   drop_na(route_name)
 
 
-distinct_A = nrow(
-  distinct(
-    filter(
-      nyc_subway, route_name == "A"), station_name, line, .keep_all = TRUE
-    )
-  )
+distinct_A = nyc_subway %>% 
+  filter(route_name == "A") %>% 
+  distinct(station_name, line, .keep_all = TRUE)
 
 
-A_ADA = nrow(
-  distinct(
-    filter(
-      nyc_subway, route_name == "A", ada == TRUE),
-    station_name, line, .keep_all = TRUE
-    )
-  )
+A_ADA = distinct_A %>%
+  filter(route_name == "A", ada == TRUE)
 
 ```
 
-`r distinct_A` distinct stations serve the A train, and `r A_ADA` of those stations are ADA compliant.
+`r nrow(distinct_A)` distinct stations serve the A train, and `r nrow(A_ADA)` of those stations are ADA compliant.
 
 
 ## Problem 3
 
 Read in pols-month csv data.
 
-```{r}
+```{r pols, results="hide"}
 month_df = 
   tibble(
     month = 1:12,
     month_name = month.name
   )
 
-pols_month = read_csv("./data/pols-month.csv") %>% 
-    janitor::clean_names() %>% 
+pols_month = read_csv("./data/pols-month.csv") %>%
+  janitor::clean_names() %>% 
   separate(mon, into = c("year", "month", "day"), sep = "[-]", convert = TRUE) %>% 
   left_join(month_df, by = "month") %>% 
   select(-month, -day, month = "month_name") %>% 
@@ -178,9 +174,9 @@ pols_month = read_csv("./data/pols-month.csv") %>%
 
 Read in and clean snp data.
 
-```{r}
+```{r snp, results="hide"}
 snp_df = read_csv("./data/snp.csv") %>% 
-    janitor::clean_names() %>% 
+  janitor::clean_names() %>% 
   separate(date, into = c("month", "day", "year"), sep = "[/]", convert = TRUE) %>% 
   left_join(month_df, by = "month") %>% 
   select(-month, -day, month = "month_name") %>% 
@@ -189,7 +185,7 @@ snp_df = read_csv("./data/snp.csv") %>%
 
 Read in and clean unemployment data.
 
-```{r}
+```{r unemployment, results="hide"}
 month_longer = 
   tibble(
     month = c("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"),
@@ -210,9 +206,9 @@ unemployment_df = read_csv("./data/unemployment.csv") %>%
 
 ```
 
-Combine the data sets.
+Combine the pols_month, snp, and unemployment data sets.
 
-```{r}
+```{r combine_pols}
 pols_month = 
   left_join(pols_month, snp_df, by = c("year", "month"))
 
@@ -221,6 +217,6 @@ pols_month =
 
 ```
 
-The pols-month data set contains information about the date each piece of data was collected, whether or not the president was republican or democratic, the number of republican and democratic governors, senators, and representatives. The snp data set reports the S&P stock market index on each date that is recorded; this provides a high level measure of how the stock market is performing. The final data set used here was the unemployment data, which contained the percentage of unemployment for each month and year. After combining these data sets, the final data set contains `r nrow(pols_month)` observations and `r ncol(pols_month)` columns. The range of years contained in this data set is `r min(pull(pols_month, year))` through `r max(pull(pols_month, year))`. Key variables found in this data are close (the value of the stock market at close of business), unemployment, and president (democrat or republican).
+The pols-month data set contains information about the date each piece of data was collected, whether or not the president was republican or democratic, and the number of republican and democratic governors, senators, and representatives. The snp data set reports the S&P stock market index on each date that is recorded; this provides a high level measure of how the stock market is performing. The final data set used here is the unemployment data, which contains the percentage of unemployment for each month and year. After combining these data sets, the final data set contains `r nrow(pols_month)` observations and `r ncol(pols_month)` columns. The range of years contained in this data set is `r min(pull(pols_month, year))` through `r max(pull(pols_month, year))`. Key variables found in this data are close (the value of the stock market at close of business), unemployment, and president (democrat or republican).
 
 
