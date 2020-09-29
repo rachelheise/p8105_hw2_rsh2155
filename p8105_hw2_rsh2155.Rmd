@@ -12,7 +12,7 @@ library(dplyr)
 
 ## Problem 1
 
-Read in the Excel sheet for Mr. Trash Wheel data.
+Read in the Excel sheet for Mr. Trash Wheel data and clean.
 
 ```{r trashwheeldf}
 trashwheel_df = 
@@ -28,7 +28,7 @@ trashwheel_df =
   )
 ```
 
-Read precipitation data for 2017 and 2018.
+Read and clean precipitation data for 2017 and 2018.
 
 ``` {r precipitation}
 precip_2017_df =
@@ -74,9 +74,7 @@ precip_df =
   
 ```
 
-This data comes from Mr. Trash Wheel in Baltimore, MD. The trash wheel sits in the Inner Harbor in Baltimore and collects trash which both cleans up the harbor and powers homes in the area. This data set is broken down by dumpster and includes information on the specific type of trash collected (glass bottles, grocery bags, sports balls, etc.), the volume and weight of the trash, and how many homes were powered by the garbage in each dumpster that was collected. the precipitation data set has data on the total precipitation in Baltimore each month. There are `r nrow(trashwheel_df)` observations in the final trash wheel data set, and `r nrow(precip_df)` observations in the final precipitation data set. 
-
-Key variables are dumpster, homes_powered, weight_tons, and total precipitation.
+This data comes from Mr. Trash Wheel in Baltimore, MD. The trash wheel sits in the Inner Harbor in Baltimore and collects trash which both cleans up the harbor and powers homes in the area. This data set is broken down by dumpster and includes information on the specific type of trash collected (glass bottles, grocery bags, sports balls, etc.), the volume and weight of the trash, and how many homes were powered by the garbage in each dumpster. The precipitation data set has data on the total precipitation in Baltimore each month. There are `r nrow(trashwheel_df)` observations in the final trash wheel data set, and `r nrow(precip_df)` observations in the final precipitation data set. Key variables are dumpster, homes_powered, weight_tons, and total precipitation.
 
 The total precipitation in 2018 was 
 `r sum(pull(filter(precip_df, year == 2018), total))` and the median number of sports balls in a dumpster in 2017 were `r median(pull(filter(trashwheel_df, year == 2017), sports_balls))`.
@@ -84,7 +82,9 @@ The total precipitation in 2018 was
 
 ## Problem 2
 
-```{r subway, results="hide"}
+Read and clean the subway data.
+
+```{r subway, message = FALSE}
 nyc_subway =
   read_csv("./data/NYC_Transit_Subway_Entrance_And_Exit_Data.csv") %>%
   select(Line:Entry, Vending, ADA) %>% 
@@ -114,8 +114,6 @@ num_ada =
 no_vending = nrow(filter(nyc_subway, vending == "NO"))
 
 no_vending_entrance = nrow(filter(nyc_subway, vending == "NO", entry == TRUE))
-
-
 ```
 
 There are `r num_distinct` distinct stations in this data set, of which `r num_ada` are ADA compliant. 
@@ -153,7 +151,7 @@ A_ADA = distinct_A %>%
 
 Read in pols-month csv data.
 
-```{r pols, results="hide"}
+```{r pols, message = FALSE}
 month_df = 
   tibble(
     month = 1:12,
@@ -174,7 +172,7 @@ pols_month = read_csv("./data/pols-month.csv") %>%
 
 Read in and clean snp data.
 
-```{r snp, results="hide"}
+```{r snp, message = FALSE}
 snp_df = read_csv("./data/snp.csv") %>% 
   janitor::clean_names() %>% 
   separate(date, into = c("month", "day", "year"), sep = "[/]", convert = TRUE) %>% 
@@ -185,7 +183,7 @@ snp_df = read_csv("./data/snp.csv") %>%
 
 Read in and clean unemployment data.
 
-```{r unemployment, results="hide"}
+```{r unemployment, message = FALSE}
 month_longer = 
   tibble(
     month = c("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"),
